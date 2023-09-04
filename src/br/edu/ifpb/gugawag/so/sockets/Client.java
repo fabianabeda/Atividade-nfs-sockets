@@ -1,40 +1,33 @@
 package br.edu.ifpb.gugawag.so.sockets;
 
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 import java.util.Scanner;
 
-public class NfsClient {
+public class Client {
+
     public static void main(String[] args) throws IOException {
-        System.out.println("== Cliente NFS ==");
+        System.out.println("== Cliente de Arquivos ==");
 
         Socket socket = new Socket("127.0.0.1", 7001);
-        DataInputStream in = new DataInputStream(socket.getInputStream());
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        DataInputStream dis = new DataInputStream(socket.getInputStream());
 
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
-            System.out.print("Comando (readdir/rename/create/remove): ");
+            System.out.println("\nComandos disponíveis: readdir, rename, create, remove");
+            System.out.print("Digite um comando: ");
             String command = scanner.nextLine();
-            out.writeUTF(command);
 
-            switch (command) {
-                case "readdir":
-                    String fileList = in.readUTF();
-                    System.out.println("Lista de arquivos: " + fileList);
-                    break;
-                case "rename":
-                case "create":
-                case "remove":
-                    System.out.print("Nome do arquivo: ");
-                    String fileName = scanner.nextLine();
-                    out.writeUTF(fileName);
-                    String response = in.readUTF();
-                    System.out.println(response);
-                    break;
-                default:
-                    System.out.println("Comando inválido");
+            dos.writeUTF(command);
+
+            if (command.equals("readdir")) {
+                String resposta = dis.readUTF();
+                System.out.println("Lista de arquivos: " + resposta);
+            } else {
+                String resposta = dis.readUTF();
+                System.out.println("Resposta do servidor: " + resposta);
             }
         }
     }

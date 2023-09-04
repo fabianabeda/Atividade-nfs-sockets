@@ -5,98 +5,113 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
-public class NfsServer {
-    private static List<String> files = new ArrayList<>();
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+import java.io.*;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Server {
+
+    private static List<String> arquivos = new ArrayList<>();
 
     public static void main(String[] args) throws IOException {
-        System.out.println("== Servidor NFS ==");
+        System.out.println("== Servidor de Arquivos ==");
 
-        // Configurar o socket do servidor
         ServerSocket serverSocket = new ServerSocket(7001);
+        Socket socket = serverSocket.accept();
+
+        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        DataInputStream dis = new DataInputStream(socket.getInputStream());
 
         while (true) {
-            Socket clientSocket = serverSocket.accept();
-            System.out.println("Cliente conectado: " + clientSocket.getInetAddress());
+            String comando = dis.readUTF();
+            String[] partes = comando.split(" ");
 
-            // Crie uma thread para lidar com cada cliente
-            Thread clientHandler = new Thread(new ClientHandler(clientSocket));
-            clientHandler.start();
+            String resposta = "";
+
+            if (partes.length > 0) {
+                String operacao = partes[0];
+
+                switch (operacao) {
+                    case "readdir":
+                        resposta = readdir();
+                        break;
+                    case "rename":
+                        if (partes.length == 3) {
+                            String nomeAntigo = partes[1];
+                            String nomeNovo = partes[2];
+                            resposta = rename(nomeAntigo, nomeNovo);
+                        } else {
+                            resposta = "Comando 'rename' deve ter 2 argumentos: nome_antigo nome_novo";
+                        }
+                        break;
+                    case "create":
+                        if (partes.length == 2) {
+                            String nomeArquivo = partes[1];
+                            resposta = create(nomeArquivo);
+                        } else {
+                            resposta = "Comando 'create' deve ter 1 argumento: nome_arquivo";
+                        }
+                        break;
+                    case "remove":
+                        if (partes.length == 2) {
+                            String nomeArquivo = partes[1];
+                            resposta = remove(nomeArquivo);
+                        } else {
+                            resposta = "Comando 'remove' deve ter 1 argumento: nome_arquivo";
+                        }
+                        break;
+                    default:
+                        resposta = "Comando desconhecido: " + operacao;
+                        break;
+                }
+            }
+
+            dos.writeUTF(resposta);
         }
     }
 
-    static class ClientHandler implements Runnable {
-        private Socket clientSocket;
-        private DataInputStream in;
-        private DataOutputStream out;
+    private static String readdir() {
+        return String.join(", ", arquivos);
+    }
 
-        public ClientHandler(Socket socket) {
-            this.clientSocket = socket;
+    private static String rename(String nomeAntigo, String nomeNovo) {
+        if (arquivos.contains(nomeAntigo)) {
+            arquivos.remove(nomeAntigo);
+            arquivos.add(nomeNovo);
+            return "Arquivo renomeado com sucesso.";
+        } else {
+            return "Arquivo não encontrado.";
         }
+    }
 
-        @Override
-        public void run() {
-            try {
-                in = new DataInputStream(clientSocket.getInputStream());
-                out = new DataOutputStream(clientSocket.getOutputStream());
-
-                while (true) {
-                    String request = in.readUTF();
-                    String[] parts = request.split(" ");
-
-                    String command = parts[0];
-                    switch (command) {
-                        case "readdir":
-                            listFiles();
-                            break;
-                        case "rename":
-                            renameFile(parts[1], parts[2]);
-                            break;
-                        case "create":
-                            createFile(parts[1]);
-                            break;
-                        case "remove":
-                            removeFile(parts[1]);
-                            break;
-                        default:
-                            out.writeUTF("Comando inválido");
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    private static String create(String nomeArquivo) {
+        if (!arquivos.contains(nomeArquivo)) {
+            arquivos.add(nomeArquivo);
+            return "Arquivo criado com sucesso.";
+        } else {
+            return "Arquivo já existe.";
         }
+    }
 
-        private void listFiles() throws IOException {
-            out.writeUTF(String.join(",", files));
-        }
-
-        private void renameFile(String oldName, String newName) throws IOException {
-            if (files.contains(oldName)) {
-                files.remove(oldName);
-                files.add(newName);
-                out.writeUTF("Arquivo renomeado com sucesso.");
-            } else {
-                out.writeUTF("Arquivo não encontrado.");
-            }
-        }
-
-        private void createFile(String fileName) throws IOException {
-            if (!files.contains(fileName)) {
-                files.add(fileName);
-                out.writeUTF("Arquivo criado com sucesso.");
-            } else {
-                out.writeUTF("Arquivo já existe.");
-            }
-        }
-
-        private void removeFile(String fileName) throws IOException {
-            if (files.contains(fileName)) {
-                files.remove(fileName);
-                out.writeUTF("Arquivo removido com sucesso.");
-            } else {
-                out.writeUTF("Arquivo não encontrado.");
-            }
+    private static String remove(String nomeArquivo) {
+        if (arquivos.contains(nomeArquivo)) {
+            arquivos.remove(nomeArquivo);
+            return "Arquivo removido com sucesso.";
+        } else {
+            return "Arquivo não encontrado.";
         }
     }
 }
